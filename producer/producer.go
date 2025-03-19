@@ -17,15 +17,23 @@ func main() {
 	defer producer.Close()
 
 	topic := "Notification"
-	fmt.Print("Enter message to send: ")
-	reader := bufio.NewReader(os.Stdin)
-	message, err := reader.ReadString('\n')
 
-	// Send message
-	err = producer.Produce(&kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-		Value:          []byte(message),
-	}, nil)
+	for {
+		fmt.Print("Enter message to send: ")
+		reader := bufio.NewReader(os.Stdin)
+		messageToSend, err := reader.ReadString('\n')
+		if err != nil {
+			log.Println("Error reading input:", err)
+			continue
+		}
 
-	fmt.Println("Message sent successfully:", message)
+		// Send message
+		err = producer.Produce(&kafka.Message{
+			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+			Value:          []byte(messageToSend),
+		}, nil)
+
+		fmt.Println("Message sent successfully:", messageToSend)
+	}
+
 }
