@@ -1,33 +1,63 @@
 package main
 
 import (
-	"context"
 	"fmt"
+	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/go-redis/redis"
 	"log"
-
-	"github.com/segmentio/kafka-go"
 )
 
 func main() {
-	topic := "hello-topic"
-	partition := 0
+	topic := "Notification"
 
-	// Connect to Kafka
-	conn, err := kafka.DialLeader(context.Background(), "tcp", "localhost:9092", topic, partition)
-	if err != nil {
-		log.Fatal("failed to connect to Kafka leader:", err)
+	// Creating a kafka consumer
+	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
+		"bootstrap.servers": "localhost:9092",
+		"group.id":          "notification-group",
+		"auto.offset.reset": "earliest",
+	})
+	defer consumer.Close()
+
+	// Connecting to redis
+	client := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
+	_, redisError := client.Ping().Result()
+	if redisError != nil {
+		panic(redisError)
+	} else {
+		fmt.Println("Conected to redis")
 	}
-	defer conn.Close()
 
 	fmt.Println("Listening for messages on topic:", topic)
 
+	err = consumer.SubscribeTopics([]string{topic}, nil)
+	if err != nil {
+		fmt.Printf("Failed to subscribe to topic: %s\n", err)
+		return
+	}
+
 	for {
 		// Read message from Kafka
-		message, err := conn.ReadMessage(1e6) // 1MB max message size
-		if err != nil {
-			log.Fatal("failed to read message:", err)
+		message, consumerErr := consumer.ReadMessage(-1)
+		if consumerErr != nil {
+			log.Fatal("failed to read message:", consumerErr)
+		} else {
+			fmt.Printf("Received message: %s\n", string(message.Value))
+			errRedis := client.Set("notification", string(message.Value), 0).Err()
+			if errRedis != nil {
+				log.Println("Redis error:", errRedis)
+			}
 		}
 
-		fmt.Printf("Received message: %s\n", string(message.Value))
+		// Retrieve and print the message from Redis
+		val, err := client.Get("notification").Result()
+		if err != nil {
+			log.Println("Error retrieving from Redis:", err)
+		} else {
+			fmt.Println("Data from Redis:", val)
+		}
 	}
 }
