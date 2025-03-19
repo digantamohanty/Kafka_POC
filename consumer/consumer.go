@@ -33,9 +33,9 @@ func main() {
 
 	fmt.Println("Listening for messages on topic:", topic)
 
-	SubscribeErr = consumer.SubscribeTopics([]string{topic}, nil)
-	if SubscribeErr != nil {
-		fmt.Printf("Failed to subscribe to topic: %s\n", SubscribeErr)
+	err = consumer.SubscribeTopics([]string{topic}, nil)
+	if err != nil {
+		fmt.Printf("Failed to subscribe to topic: %s\n", err)
 		return
 	}
 
@@ -45,7 +45,7 @@ func main() {
 		if consumerErr != nil {
 			log.Fatal("failed to read message:", consumerErr)
 		} else {
-			fmt.Printf("Received message at consumer: %s\n", string(message.Value))
+			fmt.Printf("Received message: %s\n", string(message.Value))
 			errRedis := client.Set("notification", string(message.Value), 0).Err()
 			if errRedis != nil {
 				log.Println("Redis error:", errRedis)
