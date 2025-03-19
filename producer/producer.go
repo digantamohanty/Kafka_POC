@@ -2,42 +2,30 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"fmt"
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"log"
 	"os"
-	"time"
-
-	"github.com/segmentio/kafka-go"
 )
 
 func main() {
-	topic := "hello-topic"
-	partition := 0
-
-	conn, err := kafka.DialLeader(context.Background(), "tcp", "localhost:9092", topic, partition)
+	// Creating a kafka producer
+	producer, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": "localhost:9092"})
 	if err != nil {
-		log.Fatal("failed to connect to Kafka leader:", err)
+		log.Fatal(err)
 	}
-	defer conn.Close()
+	defer producer.Close()
 
-	// Taking input from user
+	topic := "Notification"
 	fmt.Print("Enter message to send: ")
 	reader := bufio.NewReader(os.Stdin)
 	message, err := reader.ReadString('\n')
-	if err != nil {
-		log.Fatal("Error reading input:", err)
-	}
 
-	err = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-	if err != nil {
-		log.Fatal("failed to set write deadline:", err)
-	}
-
-	_, err = conn.WriteMessages(kafka.Message{Value: []byte(message)})
-	if err != nil {
-		log.Fatal("failed to write message:", err)
-	}
+	// Send message
+	err = producer.Produce(&kafka.Message{
+		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+		Value:          []byte(message),
+	}, nil)
 
 	fmt.Println("Message sent successfully:", message)
 }
