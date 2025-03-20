@@ -8,6 +8,19 @@ import (
 	"os"
 )
 
+func ProduceMessage(producer *kafka.Producer, topic string, message string) error {
+	err := producer.Produce(&kafka.Message{
+		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+		Value:          []byte(message),
+	}, nil)
+
+	if err != nil {
+		return err
+	}
+	fmt.Println("Message sent successfully:", message)
+	return nil
+}
+
 func main() {
 	// Creating a kafka producer
 	producer, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": "localhost:9092"})
@@ -28,12 +41,12 @@ func main() {
 		}
 
 		// Send message
-		err = producer.Produce(&kafka.Message{
-			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-			Value:          []byte(messageToSend),
-		}, nil)
+		ProduceMessage(producer, topic, messageToSend)
 
-		fmt.Println("Message sent successfully:", messageToSend)
+		// err := producer.Produce(&kafka.Message{
+		// 	TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+		// 	Value:          []byte(messageToSend),
+		// }, nil)
 	}
 
 }
